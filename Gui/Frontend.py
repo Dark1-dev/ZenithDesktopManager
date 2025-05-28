@@ -125,7 +125,7 @@ class ZenithDesktopManager:
         
         tk.Label(
             about, 
-            text="<Credits text here>", 
+            text=" Saan Shepherd Sarkar – Manager/Backend Programmer\n Pranto Malaker – GUI Developer\n Arni During Gomes – Database Scientist\n Md Asif Shovani - Backend Developer\n Jannatul Ferdous Sharna - Tests management", 
             anchor="w", 
             relief="solid", 
             width=45, 
