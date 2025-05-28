@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
 
-
 class ZenithDesktopManager:
     def __init__(self):
         self.root = tk.Tk()
@@ -22,9 +21,7 @@ class ZenithDesktopManager:
         ).pack(pady=10)
         
         self.create_tabs()
-        
         self.create_ssh_tab()
-        
         self.create_buttons()
     
     def create_tabs(self):
@@ -79,7 +76,8 @@ class ZenithDesktopManager:
         tk.Button(
             button_frame, 
             text="About Us",
-            width=15, 
+            width=15,
+            command=self.open_about,
             bg="#d9d9d9", 
             font=("Arial", 10)
         ).pack(side="left", padx=10)
@@ -101,6 +99,49 @@ class ZenithDesktopManager:
             font=("Arial", 10, "bold"), 
             command=self.show_save_prompt
         ).pack(side="left", padx=10)
+
+    def open_about(self):
+        about = tk.Toplevel(self.root)
+        about.title("About us - Zenith Software")
+        about.geometry("400x300")
+        about.configure(bg="#f0f0f0")
+        
+        tk.Label(
+            about, 
+            text="Logo", 
+            relief="solid", 
+            width=20, 
+            height=6, 
+            bg="#e6f7ff"
+        ).pack(pady=10)
+        
+        tk.Label(
+            about, 
+            text="Credits:", 
+            anchor="w", 
+            bg="#f0f0f0", 
+            font=("Helvetica", 10, "bold")
+        ).pack(anchor="w", padx=10)
+        
+        tk.Label(
+            about, 
+            text="<Credits text here>", 
+            anchor="w", 
+            relief="solid", 
+            width=45, 
+            height=5, 
+            bg="white"
+        ).pack(padx=10, pady=5)
+        
+        tk.Button(
+            about, 
+            text="OK", 
+            bg="#ff6666", 
+            fg="white", 
+            width=10, 
+            command=about.destroy
+
+        ).pack(pady=10)
     
     def show_save_prompt(self):
         prompt = tk.Toplevel(self.root)
