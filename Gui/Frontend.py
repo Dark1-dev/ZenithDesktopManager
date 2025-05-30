@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 
+
 class ZenithDesktopManager:
     def __init__(self):
         self.root = tk.Tk()
@@ -11,7 +12,7 @@ class ZenithDesktopManager:
         self.root.title("Zenith Desktop Controller")
         self.root.geometry("650x500")
         self.root.configure(bg="#e6f7ff")
-
+        
         tk.Label(
             self.root, 
             text="Zenith Desktop Controller", 
@@ -21,7 +22,11 @@ class ZenithDesktopManager:
         ).pack(pady=10)
         
         self.create_tabs()
+        
         self.create_ssh_tab()
+        self.create_sftp_tab()
+        self.create_ftp_tab()
+        
         self.create_buttons()
     
     def create_tabs(self):
@@ -69,15 +74,93 @@ class ZenithDesktopManager:
         )
         self.profile_listbox.grid(row=4, column=1, padx=10, pady=5)
     
+    def create_sftp_tab(self):
+        fields = ["Username:", "Password:", "IP Address / Hostname:", "Port:"]
+        
+        for i, field in enumerate(fields):
+            tk.Label(
+                self.tab_sftp, 
+                text=field, 
+                bg="#ffffff", 
+                fg="#333333", 
+                font=("Arial", 10)
+            ).grid(row=i, column=0, sticky="w", padx=10, pady=5)
+            
+            ent = tk.Entry(self.tab_sftp, width=45, bd=2)
+            ent.grid(row=i, column=1, padx=10, pady=5)
+            self.entries[f"sftp_{field}"] = ent
+        
+        tk.Label(
+            self.tab_sftp, 
+            text="SFTP Profiles:", 
+            bg="#ffffff", 
+            font=("Arial", 10, "bold")
+        ).grid(row=4, column=0, sticky="nw", padx=10, pady=5)
+        
+        self.sftp_profile_listbox = tk.Listbox(
+            self.tab_sftp, 
+            height=4, 
+            width=42, 
+            bg="#f2f2f2", 
+            bd=2
+        )
+        self.sftp_profile_listbox.grid(row=4, column=1, padx=10, pady=5)
+    
+    def create_ftp_tab(self):
+        fields = ["Username:", "Password:", "IP Address / Hostname:", "Port:"]
+        
+        for i, field in enumerate(fields):
+            tk.Label(
+                self.tab_ftp, 
+                text=field, 
+                bg="#ffffff", 
+                fg="#333333", 
+                font=("Arial", 10)
+            ).grid(row=i, column=0, sticky="w", padx=10, pady=5)
+            
+            ent = tk.Entry(self.tab_ftp, width=45, bd=2)
+            ent.grid(row=i, column=1, padx=10, pady=5)
+            self.entries[f"ftp_{field}"] = ent
+        
+        tk.Label(
+            self.tab_ftp, 
+            text="FTP Profiles:", 
+            bg="#ffffff", 
+            font=("Arial", 10, "bold")
+        ).grid(row=4, column=0, sticky="nw", padx=10, pady=5)
+        
+        self.ftp_profile_listbox = tk.Listbox(
+            self.tab_ftp, 
+            height=4, 
+            width=42, 
+            bg="#f2f2f2", 
+            bd=2
+        )
+        self.ftp_profile_listbox.grid(row=4, column=1, padx=10, pady=5)
+        
+        tk.Label(
+            self.tab_ftp, 
+            text="Connection Type:", 
+            bg="#ffffff", 
+            font=("Arial", 10, "bold")
+        ).grid(row=5, column=0, sticky="w", padx=10, pady=5)
+        
+        conn_frame = tk.Frame(self.tab_ftp, bg="#ffffff")
+        conn_frame.grid(row=5, column=1, sticky="w", padx=10, pady=5)
+        
+        self.ftp_type = tk.StringVar(value="ftp")
+        tk.Radiobutton(conn_frame, text="FTP", variable=self.ftp_type, value="ftp", bg="#ffffff").pack(side="left")
+        tk.Radiobutton(conn_frame, text="FTPS", variable=self.ftp_type, value="ftps", bg="#ffffff").pack(side="left")
+    
     def create_buttons(self):
         button_frame = tk.Frame(self.root, bg="#e6f7ff")
         button_frame.pack(pady=20)
         
         tk.Button(
             button_frame, 
-            text="About Us",
-            width=15,
-            command=self.open_about,
+            text="About Us", 
+            command=self.open_about, 
+            width=15, 
             bg="#d9d9d9", 
             font=("Arial", 10)
         ).pack(side="left", padx=10)
@@ -99,7 +182,7 @@ class ZenithDesktopManager:
             font=("Arial", 10, "bold"), 
             command=self.show_save_prompt
         ).pack(side="left", padx=10)
-
+    
     def open_about(self):
         about = tk.Toplevel(self.root)
         about.title("About us - Zenith Software")
@@ -125,7 +208,7 @@ class ZenithDesktopManager:
         
         tk.Label(
             about, 
-            text=" Saan Shepherd Sarkar – Manager/Backend Programmer\n Pranto Malaker – GUI Developer\n Arni During Gomes – Database Scientist\n Md Asif Shovani - Backend Developer\n Jannatul Ferdous Sharna - Tests management", 
+            text="<Credits text here>", 
             anchor="w", 
             relief="solid", 
             width=45, 
@@ -140,7 +223,6 @@ class ZenithDesktopManager:
             fg="white", 
             width=10, 
             command=about.destroy
-
         ).pack(pady=10)
     
     def show_save_prompt(self):
