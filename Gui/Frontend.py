@@ -1,5 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
+import os
+from Backend.ssh import ssh_terminal
 
 
 class ZenithDesktopManager:
@@ -225,6 +227,20 @@ class ZenithDesktopManager:
             command=about.destroy
         ).pack(pady=10)
     
+    def start_ssh_connection(self):
+        current_tab = self.tab_control.select()
+        tab_name = self.tab_control.tab(current_tab, "text")
+        
+        if tab_name == "SSH":
+            os.environ["SSH_HOST"] = self.entries["IP Address / Hostname:"].get()
+            os.environ["SSH_PORT"] = self.entries["Port:"].get()
+            os.environ["SSH_USER"] = self.entries["Username:"].get()
+            os.environ["SSH_PASS"] = self.entries["Password:"].get()
+            
+            ssh_terminal()
+        else:
+            pass
+
     def show_save_prompt(self):
         prompt = tk.Toplevel(self.root)
         prompt.title("Save Information?")
@@ -241,11 +257,15 @@ class ZenithDesktopManager:
         button_frame = tk.Frame(prompt, bg="#f0f8ff")
         button_frame.pack()
         
+        def handle_yes():
+            prompt.destroy()
+            self.start_ssh_connection()
+        
         tk.Button(
             button_frame, 
             text="No", 
             width=10, 
-            command=prompt.destroy
+            command=lambda: [prompt.destroy(), self.start_ssh_connection()]
         ).pack(side="left", padx=10)
         
         tk.Button(
@@ -254,7 +274,7 @@ class ZenithDesktopManager:
             bg="#ff6666", 
             fg="white", 
             width=10, 
-            command=prompt.destroy
+            command=handle_yes
         ).pack(side="left", padx=10)
     
     def run(self):
