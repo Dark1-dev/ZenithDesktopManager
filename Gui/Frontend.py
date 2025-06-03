@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import os
 from Backend.ssh import ssh_terminal
+from Backend.sftp import sftp_terminal
 
 
 class ZenithDesktopManager:
@@ -227,7 +228,7 @@ class ZenithDesktopManager:
             command=about.destroy
         ).pack(pady=10)
     
-    def start_ssh_connection(self):
+    def start_connection(self):
         current_tab = self.tab_control.select()
         tab_name = self.tab_control.tab(current_tab, "text")
         
@@ -238,6 +239,13 @@ class ZenithDesktopManager:
             os.environ["SSH_PASS"] = self.entries["Password:"].get()
             
             ssh_terminal()
+        elif tab_name == "SFTP":
+            os.environ["SFTP_HOST"] = self.entries["sftp_IP Address / Hostname:"].get()
+            os.environ["SFTP_PORT"] = self.entries["sftp_Port:"].get()
+            os.environ["SFTP_USER"] = self.entries["sftp_Username:"].get()
+            os.environ["SFTP_PASS"] = self.entries["sftp_Password:"].get()
+            
+            sftp_terminal()
         else:
             pass
 
@@ -259,13 +267,13 @@ class ZenithDesktopManager:
         
         def handle_yes():
             prompt.destroy()
-            self.start_ssh_connection()
+            self.start_connection()
         
         tk.Button(
             button_frame, 
             text="No", 
             width=10, 
-            command=lambda: [prompt.destroy(), self.start_ssh_connection()]
+            command=lambda: [prompt.destroy(), self.start_connection()]
         ).pack(side="left", padx=10)
         
         tk.Button(
