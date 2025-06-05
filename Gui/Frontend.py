@@ -3,8 +3,9 @@ from tkinter import ttk
 import os
 from Backend.ssh import ssh_terminal
 from Backend.sftp import sftp_terminal
+from Backend.ftp import ftp_terminal
 
-
+from Backend.ftp import ftp_terminal
 class ZenithDesktopManager:
     def __init__(self):
         self.root = tk.Tk()
@@ -246,6 +247,13 @@ class ZenithDesktopManager:
             os.environ["SFTP_PASS"] = self.entries["sftp_Password:"].get()
             
             sftp_terminal()
+        elif tab_name == "FTP":
+            os.environ["FTP_HOST"] = self.entries["ftp_IP Address / Hostname:"].get()
+            os.environ["FTP_PORT"] = self.entries["ftp_Port:"].get()
+            os.environ["FTP_USER"] = self.entries["ftp_Username:"].get()
+            os.environ["FTP_PASS"] = self.entries["ftp_Password:"].get()
+            
+            ftp_terminal()
         else:
             pass
 
