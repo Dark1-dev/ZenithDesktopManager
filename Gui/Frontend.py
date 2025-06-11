@@ -1,16 +1,18 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, simpledialog
 import os
 from Backend.ssh import ssh_terminal
 from Backend.sftp import sftp_terminal
 from Backend.ftp import ftp_terminal
+from Backend.db_manager import DatabaseManager
 
-from Backend.ftp import ftp_terminal
 class ZenithDesktopManager:
     def __init__(self):
         self.root = tk.Tk()
         self.entries = {}
+        self.db = DatabaseManager()
         self.setup_ui()
+        self.load_profiles()
     
     def setup_ui(self):
         self.root.title("Zenith Desktop Controller")
@@ -26,11 +28,9 @@ class ZenithDesktopManager:
         ).pack(pady=10)
         
         self.create_tabs()
-        
         self.create_ssh_tab()
         self.create_sftp_tab()
         self.create_ftp_tab()
-        
         self.create_buttons()
     
     def create_tabs(self):
@@ -69,14 +69,14 @@ class ZenithDesktopManager:
             font=("Arial", 10, "bold")
         ).grid(row=4, column=0, sticky="nw", padx=10, pady=5)
         
-        self.profile_listbox = tk.Listbox(
+        self.ssh_profile_listbox = tk.Listbox(
             self.tab_ssh, 
             height=4, 
             width=42, 
             bg="#f2f2f2", 
             bd=2
         )
-        self.profile_listbox.grid(row=4, column=1, padx=10, pady=5)
+        self.ssh_profile_listbox.grid(row=4, column=1, padx=10, pady=5)
     
     def create_sftp_tab(self):
         fields = ["Username:", "Password:", "IP Address / Hostname:", "Port:"]
@@ -238,26 +238,49 @@ class ZenithDesktopManager:
             os.environ["SSH_PORT"] = self.entries["Port:"].get()
             os.environ["SSH_USER"] = self.entries["Username:"].get()
             os.environ["SSH_PASS"] = self.entries["Password:"].get()
-            
             ssh_terminal()
         elif tab_name == "SFTP":
             os.environ["SFTP_HOST"] = self.entries["sftp_IP Address / Hostname:"].get()
             os.environ["SFTP_PORT"] = self.entries["sftp_Port:"].get()
             os.environ["SFTP_USER"] = self.entries["sftp_Username:"].get()
             os.environ["SFTP_PASS"] = self.entries["sftp_Password:"].get()
-            
             sftp_terminal()
         elif tab_name == "FTP":
             os.environ["FTP_HOST"] = self.entries["ftp_IP Address / Hostname:"].get()
             os.environ["FTP_PORT"] = self.entries["ftp_Port:"].get()
             os.environ["FTP_USER"] = self.entries["ftp_Username:"].get()
             os.environ["FTP_PASS"] = self.entries["ftp_Password:"].get()
-            
             ftp_terminal()
-        else:
-            pass
-
+    
     def show_save_prompt(self):
+        current_tab = self.tab_control.select()
+        tab_name = self.tab_control.tab(current_tab, "text")
+        
+        if tab_name == "SSH":
+            host = self.entries["IP Address / Hostname:"].get()
+            port = int(self.entries["Port:"].get())
+            username = self.entries["Username:"].get()
+            password = self.entries["Password:"].get()
+        elif tab_name == "SFTP":
+            host = self.entries["sftp_IP Address / Hostname:"].get()
+            port = int(self.entries["sftp_Port:"].get())
+            username = self.entries["sftp_Username:"].get()
+            password = self.entries["sftp_Password:"].get()
+        else:
+            host = self.entries["ftp_IP Address / Hostname:"].get()
+            port = int(self.entries["ftp_Port:"].get())
+            username = self.entries["ftp_Username:"].get()
+            password = self.entries["ftp_Password:"].get()
+        
+        existing_connections = self.db.get_connections(tab_name)
+        for conn in existing_connections:
+            if (conn['host'] == host and 
+                conn['port'] == port and 
+                conn['username'] == username and 
+                conn['password'] == password):
+                self.start_connection()
+                return
+        
         prompt = tk.Toplevel(self.root)
         prompt.title("Save Information?")
         prompt.geometry("350x150")
@@ -274,6 +297,36 @@ class ZenithDesktopManager:
         button_frame.pack()
         
         def handle_yes():
+            name = simpledialog.askstring("Save Connection", "Enter a name for this connection:")
+            if name:
+                if tab_name == "SSH":
+                    self.db.save_connection(
+                        name=name,
+                        protocol="SSH",
+                        host=host,
+                        port=port,
+                        username=username,
+                        password=password
+                    )
+                elif tab_name == "SFTP":
+                    self.db.save_connection(
+                        name=name,
+                        protocol="SFTP",
+                        host=host,
+                        port=port,
+                        username=username,
+                        password=password
+                    )
+                elif tab_name == "FTP":
+                    self.db.save_connection(
+                        name=name,
+                        protocol="FTP",
+                        host=host,
+                        port=port,
+                        username=username,
+                        password=password
+                    )
+                self.load_profiles()
             prompt.destroy()
             self.start_connection()
         
@@ -293,18 +346,16 @@ class ZenithDesktopManager:
             command=handle_yes
         ).pack(side="left", padx=10)
     
+    def load_profiles(self):
+        self.ssh_profile_listbox.delete(0, tk.END)
+        self.sftp_profile_listbox.delete(0, tk.END)
+        self.ftp_profile_listbox.delete(0, tk.END)
+        
+        for protocol in ['SSH', 'SFTP', 'FTP']:
+            connections = self.db.get_connections(protocol)
+            listbox = getattr(self, f"{protocol.lower()}_profile_listbox")
+            for conn in connections:
+                listbox.insert(tk.END, conn['name'])
+    
     def run(self):
         self.root.mainloop()
-    
-    def get_connection_info(self):
-        return {
-            field.rstrip(':'): entry.get() 
-            for field, entry in self.entries.items()
-        }
-    
-    def set_connection_info(self, info):
-        for field, entry in self.entries.items():
-            field_key = field.rstrip(':')
-            if field_key in info:
-                entry.delete(0, tk.END)
-                entry.insert(0, info[field_key])

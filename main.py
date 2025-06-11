@@ -4,6 +4,5 @@ def main():
     app = ZenithDesktopManager()
     app.run()
 
-
 if __name__ == "__main__":
     main()
