@@ -1,5 +1,7 @@
 import os
 import paramiko
+import threading
+import sys
 
 def ssh_terminal():
     hostname = os.environ.get("SSH_HOST")
@@ -19,17 +21,37 @@ def ssh_terminal():
 
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
     try:
         client.connect(hostname, port=port, username=username, password=password)
-        print(f"Connected to {hostname}:{port}. Type commands below.\n(Type 'exit' to quit)\n")
+        print(f"Connected to {hostname}:{port}. Type commands below.\n(Type 'exit' or Ctrl+D to quit)\n")
+
+        channel = client.invoke_shell()
+        
+        def receive_output():
+            while True:
+                try:
+                    data = channel.recv(1024)
+                    if not data:
+                        break
+                    sys.stdout.write(data.decode())
+                    sys.stdout.flush()
+                except Exception:
+                    break
+
+        output_thread = threading.Thread(target=receive_output, daemon=True)
+        output_thread.start()
 
         while True:
-            cmd = input(f"{username}@{hostname}$ ")
-            if cmd.strip().lower() == "exit":
+            try:
+                user_input = input()
+                if user_input.strip().lower() == "exit":
+                    break
+                channel.send(user_input + "\n")
+            except (EOFError, KeyboardInterrupt):
                 break
-            stdin, stdout, stderr = client.exec_command(cmd)
-            print(stdout.read().decode(), end='')
-            print(stderr.read().decode(), end='')
+
+        channel.close()
 
     except Exception as e:
         print(f"Connection failed: {e}")

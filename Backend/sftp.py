@@ -8,7 +8,7 @@ def sftp_terminal():
     password = os.environ.get("SFTP_PASS")
 
     if not all([hostname, port, username, password]):
-        print("Missing environment variables.")
+        print("Missing environment variables (SFTP_HOST, SFTP_PORT, SFTP_USER, SFTP_PASS).")
         return
 
     try:
@@ -23,37 +23,60 @@ def sftp_terminal():
         sftp = paramiko.SFTPClient.from_transport(transport)
 
         print(f"Connected to {hostname}:{port} via SFTP.")
-        print("Type commands below (ls, cd <dir>, get <file>, put <file>, pwd, exit)")
+        print("Type commands below (ls, cd <dir>, get <local> [remote], put <local> [remote], pwd, exit)")
 
         while True:
             cmd = input(f"{username}@{hostname} (sftp)> ").strip()
             if cmd.lower() == "exit":
                 break
+
             elif cmd == "ls":
-                for f in sftp.listdir():
-                    print(f)
+                try:
+                    for f in sftp.listdir():
+                        print(f)
+                except Exception as e:
+                    print(f"ls error: {e}")
+
             elif cmd == "pwd":
-                print(sftp.getcwd())
+                try:
+                    print(sftp.getcwd())
+                except Exception as e:
+                    print(f"pwd error: {e}")
+
             elif cmd.startswith("cd "):
                 try:
                     path = cmd.split(" ", 1)[1]
                     sftp.chdir(path)
                 except Exception as e:
                     print(f"cd error: {e}")
+
             elif cmd.startswith("get "):
                 try:
-                    filename = cmd.split(" ", 1)[1]
-                    sftp.get(filename, filename)
-                    print(f"Downloaded: {filename}")
+                    parts = cmd.split(" ")
+                    remote_file = parts[1]
+                    local_file = parts[2] if len(parts) > 2 else os.path.basename(remote_file)
+                    sftp.get(remote_file, local_file)
+                    print(f"Downloaded: {remote_file} → {local_file}")
                 except Exception as e:
                     print(f"get error: {e}")
+
             elif cmd.startswith("put "):
                 try:
-                    filename = cmd.split(" ", 1)[1]
-                    sftp.put(filename, filename)
-                    print(f"Uploaded: {filename}")
+                    parts = cmd.split(" ")
+                    local_file = parts[1]
+                    remote_file = parts[2] if len(parts) > 2 else os.path.basename(local_file)
+
+                    local_file = os.path.normpath(local_file)
+
+                    if not os.path.isfile(local_file):
+                        print(f"Local file does not exist: {local_file}")
+                        continue
+
+                    sftp.put(local_file, remote_file)
+                    print(f"Uploaded: {local_file} → {remote_file}")
                 except Exception as e:
                     print(f"put error: {e}")
+
             else:
                 print("Unknown command.")
     except Exception as e:

@@ -82,6 +82,7 @@ class ZenithDesktopManager:
             bd=2
         )
         self.ssh_profile_listbox.grid(row=4, column=1, padx=10, pady=5)
+        self.ssh_profile_listbox.bind('<Double-Button-1>', lambda e: self.connect_from_profile("SSH"))
     
     def create_sftp_tab(self):
         fields = ["Username:", "Password:", "IP Address / Hostname:", "Port:"]
@@ -114,6 +115,7 @@ class ZenithDesktopManager:
             bd=2
         )
         self.sftp_profile_listbox.grid(row=4, column=1, padx=10, pady=5)
+        self.sftp_profile_listbox.bind('<Double-Button-1>', lambda e: self.connect_from_profile("SFTP"))
     
     def create_ftp_tab(self):
         fields = ["Username:", "Password:", "IP Address / Hostname:", "Port:"]
@@ -146,6 +148,7 @@ class ZenithDesktopManager:
             bd=2
         )
         self.ftp_profile_listbox.grid(row=4, column=1, padx=10, pady=5)
+        self.ftp_profile_listbox.bind('<Double-Button-1>', lambda e: self.connect_from_profile("FTP"))
         
         tk.Label(
             self.tab_ftp, 
@@ -418,7 +421,6 @@ class ZenithDesktopManager:
             current_dir = os.path.dirname(os.path.abspath(__file__))
             
             if sys.platform == "win32":
-                # Windows update script
                 update_script = f"""@echo off
 timeout /t 2 /nobreak
 xcopy /y /e "{temp_dir}\\*" "{current_dir}\\"
@@ -430,7 +432,6 @@ start "" "{sys.executable}" "{os.path.join(current_dir, 'main.py')}"
                     f.write(update_script)
                 subprocess.Popen(["cmd", "/c", script_path])
             else:
-                # Unix-like systems update script
                 update_script = f"""#!/bin/bash
 sleep 2
 cp -r "{temp_dir}/"* "{current_dir}/"
@@ -440,7 +441,7 @@ rm -rf "{temp_dir}"
                 script_path = os.path.join(current_dir, "update.sh")
                 with open(script_path, "w") as f:
                     f.write(update_script)
-                os.chmod(script_path, 0o755)  # Make the script executable
+                os.chmod(script_path, 0o755) 
                 subprocess.Popen(["/bin/bash", script_path])
             
             self.root.quit()
@@ -449,6 +450,48 @@ rm -rf "{temp_dir}"
             messagebox.showerror("Update Failed", 
                                f"An error occurred while updating: {str(e)}\n"
                                "Please try updating manually from GitHub.")
+    
+    def connect_from_profile(self, protocol):
+        listbox = getattr(self, f"{protocol.lower()}_profile_listbox")
+        selection = listbox.curselection()
+        
+        if not selection:
+            return
+        
+        profile_name = listbox.get(selection[0])
+        connection = self.db.get_connection_by_name(profile_name)
+        
+        if not connection:
+            messagebox.showerror("Error", "Selected profile not found in database.")
+            return
+        
+        if protocol == "SSH":
+            self.entries["Username:"].delete(0, tk.END)
+            self.entries["Username:"].insert(0, connection['username'])
+            self.entries["Password:"].delete(0, tk.END)
+            self.entries["Password:"].insert(0, connection['password'])
+            self.entries["IP Address / Hostname:"].delete(0, tk.END)
+            self.entries["IP Address / Hostname:"].insert(0, connection['host'])
+            self.entries["Port:"].delete(0, tk.END)
+            self.entries["Port:"].insert(0, str(connection['port']))
+        elif protocol == "SFTP":
+            self.entries["sftp_Username:"].delete(0, tk.END)
+            self.entries["sftp_Username:"].insert(0, connection['username'])
+            self.entries["sftp_Password:"].delete(0, tk.END)
+            self.entries["sftp_Password:"].insert(0, connection['password'])
+            self.entries["sftp_IP Address / Hostname:"].delete(0, tk.END)
+            self.entries["sftp_IP Address / Hostname:"].insert(0, connection['host'])
+            self.entries["sftp_Port:"].delete(0, tk.END)
+            self.entries["sftp_Port:"].insert(0, str(connection['port']))
+        elif protocol == "FTP":
+            self.entries["ftp_Username:"].delete(0, tk.END)
+            self.entries["ftp_Username:"].insert(0, connection['username'])
+            self.entries["ftp_Password:"].delete(0, tk.END)
+            self.entries["ftp_Password:"].insert(0, connection['password'])
+            self.entries["ftp_IP Address / Hostname:"].delete(0, tk.END)
+            self.entries["ftp_IP Address / Hostname:"].insert(0, connection['host'])
+            self.entries["ftp_Port:"].delete(0, tk.END)
+            self.entries["ftp_Port:"].insert(0, str(connection['port']))
     
     def run(self):
         self.root.mainloop()

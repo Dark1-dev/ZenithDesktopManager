@@ -42,8 +42,10 @@ class DatabaseManager:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS passwords (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    connection_id INTEGER,
                     encrypted_value TEXT NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (connection_id) REFERENCES connections(id)
                 )
             """)
             
@@ -58,18 +60,47 @@ class DatabaseManager:
             """)
 
     def save_connection(self, name, protocol, host, port, username, password):
-        with sqlite3.connect(self.db_path) as conn:
-            encrypted_password = self.cipher.encrypt(password.encode())
-            cursor = conn.execute(
-                "INSERT INTO passwords (encrypted_value) VALUES (?)",
-                (encrypted_password,)
-            )
-            password_id = cursor.lastrowid
-
-            conn.execute("""
-                INSERT INTO connections (name, protocol, host, port, username, password_id)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (name, protocol, host, port, username, password_id))
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                # First, check if connection with this name already exists
+                cursor = conn.execute("SELECT id FROM connections WHERE name = ?", (name,))
+                existing = cursor.fetchone()
+                
+                if existing:
+                    # Update existing connection
+                    conn.execute("""
+                        UPDATE connections 
+                        SET protocol = ?, host = ?, port = ?, username = ?
+                        WHERE name = ?
+                    """, (protocol, host, port, username, name))
+                    
+                    # Update password
+                    encrypted_password = self.cipher.encrypt(password.encode())
+                    conn.execute("""
+                        UPDATE passwords 
+                        SET encrypted_value = ?
+                        WHERE connection_id = ?
+                    """, (encrypted_password, existing[0]))
+                else:
+                    # Insert new connection
+                    cursor = conn.execute("""
+                        INSERT INTO connections (name, protocol, host, port, username)
+                        VALUES (?, ?, ?, ?, ?)
+                    """, (name, protocol, host, port, username))
+                    
+                    connection_id = cursor.lastrowid
+                    
+                    # Insert encrypted password
+                    encrypted_password = self.cipher.encrypt(password.encode())
+                    conn.execute("""
+                        INSERT INTO passwords (connection_id, encrypted_value)
+                        VALUES (?, ?)
+                    """, (connection_id, encrypted_password))
+                
+                conn.commit()
+        except sqlite3.Error as e:
+            print(f"Error saving connection: {e}")
+            raise
 
     def get_connections(self, protocol=None):
         with sqlite3.connect(self.db_path) as conn:
@@ -77,14 +108,14 @@ class DatabaseManager:
                 cursor = conn.execute("""
                     SELECT c.*, p.encrypted_value 
                     FROM connections c
-                    JOIN passwords p ON c.password_id = p.id
+                    JOIN passwords p ON c.id = p.connection_id
                     WHERE c.protocol = ?
                 """, (protocol,))
             else:
                 cursor = conn.execute("""
                     SELECT c.*, p.encrypted_value 
                     FROM connections c
-                    JOIN passwords p ON c.password_id = p.id
+                    JOIN passwords p ON c.id = p.connection_id
                 """)
             
             connections = []
@@ -110,4 +141,36 @@ class DatabaseManager:
             password_id = cursor.fetchone()[0]
             
             conn.execute("DELETE FROM connections WHERE id = ?", (connection_id,))
-            conn.execute("DELETE FROM passwords WHERE id = ?", (password_id,)) 
+            conn.execute("DELETE FROM passwords WHERE id = ?", (password_id,))
+
+    def get_connection_by_name(self, name):
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.execute("""
+                    SELECT c.id, c.name, c.protocol, c.host, c.port, c.username, p.encrypted_value
+                    FROM connections c
+                    JOIN passwords p ON c.id = p.connection_id
+                    WHERE c.name = ?
+                """, (name,))
+                result = cursor.fetchone()
+                if result:
+                    try:
+                        decrypted_password = self.cipher.decrypt(result[6]).decode()
+                    except Exception as e:
+                        print(f"Error decrypting password: {e}")
+                        # If decryption fails, try to get the raw password
+                        decrypted_password = result[6]
+                    
+                    return {
+                        'id': result[0],
+                        'name': result[1],
+                        'protocol': result[2],
+                        'host': result[3],
+                        'port': result[4],
+                        'username': result[5],
+                        'password': decrypted_password
+                    }
+                return None
+        except sqlite3.Error as e:
+            print(f"Error getting connection by name: {e}")
+            return None 
