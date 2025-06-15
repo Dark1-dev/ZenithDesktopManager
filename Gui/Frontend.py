@@ -1,6 +1,9 @@
 import tkinter as tk
-from tkinter import ttk, simpledialog
+from tkinter import ttk, simpledialog, messagebox
 import os
+import requests
+import subprocess
+import sys
 from Backend.ssh import ssh_terminal
 from Backend.sftp import sftp_terminal
 from Backend.ftp import ftp_terminal
@@ -11,6 +14,8 @@ class ZenithDesktopManager:
         self.root = tk.Tk()
         self.entries = {}
         self.db = DatabaseManager()
+        self.current_version = "1.0.0"
+        self.github_repo = "https://github.com/Dark1-dev/ZenithDesktopManager.git"
         self.setup_ui()
         self.load_profiles()
     
@@ -164,6 +169,15 @@ class ZenithDesktopManager:
             button_frame, 
             text="About Us", 
             command=self.open_about, 
+            width=15, 
+            bg="#d9d9d9", 
+            font=("Arial", 10)
+        ).pack(side="left", padx=10)
+        
+        tk.Button(
+            button_frame, 
+            text="Check for Updates", 
+            command=self.check_for_updates,
             width=15, 
             bg="#d9d9d9", 
             font=("Arial", 10)
@@ -356,6 +370,85 @@ class ZenithDesktopManager:
             listbox = getattr(self, f"{protocol.lower()}_profile_listbox")
             for conn in connections:
                 listbox.insert(tk.END, conn['name'])
+    
+    def check_for_updates(self):
+        try:
+            api_url = "https://api.github.com/repos/Dark1-dev/ZenithDesktopManager/releases/latest"
+            response = requests.get(api_url)
+            
+            if response.status_code == 200:
+                latest_version = response.json()["tag_name"].replace("v", "")
+                
+                if self.compare_versions(latest_version, self.current_version) > 0:
+                    if messagebox.askyesno("Update Available", 
+                                         f"A new version ({latest_version}) is available!\n"
+                                         f"Current version: {self.current_version}\n\n"
+                                         "Would you like to update now?"):
+                        self.update_application()
+                else:
+                    messagebox.showinfo("Up to Date", 
+                                      f"You are running the latest version ({self.current_version})")
+            else:
+                messagebox.showerror("Update Check Failed", 
+                                   "Could not check for updates. Please try again later.")
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred while checking for updates: {str(e)}")
+    
+    def compare_versions(self, version1, version2):
+        v1_parts = [int(x) for x in version1.split('.')]
+        v2_parts = [int(x) for x in version2.split('.')]
+        
+        for i in range(max(len(v1_parts), len(v2_parts))):
+            v1 = v1_parts[i] if i < len(v1_parts) else 0
+            v2 = v2_parts[i] if i < len(v2_parts) else 0
+            
+            if v1 > v2:
+                return 1
+            elif v1 < v2:
+                return -1
+        return 0
+    
+    def update_application(self):
+        try:
+            temp_dir = os.path.join(os.path.expanduser("~"), "ZenithDesktopManager_update")
+            if not os.path.exists(temp_dir):
+                os.makedirs(temp_dir)
+            
+            subprocess.run(["git", "clone", self.github_repo, temp_dir], check=True)
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            
+            if sys.platform == "win32":
+                # Windows update script
+                update_script = f"""@echo off
+timeout /t 2 /nobreak
+xcopy /y /e "{temp_dir}\\*" "{current_dir}\\"
+rmdir /s /q "{temp_dir}"
+start "" "{sys.executable}" "{os.path.join(current_dir, 'main.py')}"
+"""
+                script_path = os.path.join(current_dir, "update.bat")
+                with open(script_path, "w") as f:
+                    f.write(update_script)
+                subprocess.Popen(["cmd", "/c", script_path])
+            else:
+                # Unix-like systems update script
+                update_script = f"""#!/bin/bash
+sleep 2
+cp -r "{temp_dir}/"* "{current_dir}/"
+rm -rf "{temp_dir}"
+"{sys.executable}" "{os.path.join(current_dir, 'main.py')}" &
+"""
+                script_path = os.path.join(current_dir, "update.sh")
+                with open(script_path, "w") as f:
+                    f.write(update_script)
+                os.chmod(script_path, 0o755)  # Make the script executable
+                subprocess.Popen(["/bin/bash", script_path])
+            
+            self.root.quit()
+            
+        except Exception as e:
+            messagebox.showerror("Update Failed", 
+                               f"An error occurred while updating: {str(e)}\n"
+                               "Please try updating manually from GitHub.")
     
     def run(self):
         self.root.mainloop()

@@ -22,10 +22,13 @@ A secure and user-friendly desktop application for managing remote servers throu
 - **Recommended**: Quad-core 3.0 GHz CPU, 4-6 GB RAM, 32 GB SSD
 
 **Software:**
-- Python 3.10 or higher
-- SQLite
-- Tkinter (usually included with Python)
-- Paramiko library
+- Python 3.8 or higher
+- Git (for automatic updates)
+- Required Python packages (install using `pip install -r requirements.txt`):
+  - paramiko==3.4.0
+  - cryptography==42.0.2
+  - requests==2.31.0
+  - tkinter (usually comes with Python)
 
 ## Installation
 
